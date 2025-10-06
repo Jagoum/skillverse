@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skillverse-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: skillverse-postgres
+  template:
+    metadata:
+      labels:
+        app: skillverse-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: skillverse_db
+            - name: POSTGRES_USER
+              value: skillverse_user
+            - name: POSTGRES_PASSWORD
+              value: skillverse_pass
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+        - name: init-sql
+          configMap:
+            name: postgres-init-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-config
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'user'
+    );
+
+    -- Insert default admin user (password is hashed for 'VeryStrongPassword678')
+    -- Note: Replace the password hash below with an actual bcrypt hash of the password
+    INSERT INTO users (username, email, password, role) VALUES ('admin', 'admin@user.com', '$2b$10$example.hash.here', 'admin') ON CONFLICT (email) DO NOTHING;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skillverse-postgres-service
+spec:
+  selector:
+    app: skillverse-postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
