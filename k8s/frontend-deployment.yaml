@@ -21,12 +21,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: skillverse-frontend
+  name: skillverse-frontend-service
 spec:
-  type: LoadBalancer
   selector:
     app: skillverse-frontend
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+  type: LoadBalancer

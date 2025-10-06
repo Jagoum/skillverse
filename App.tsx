@@ -17,6 +17,19 @@ const App: React.FC = () => {
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
     }
+
+    // Ensure default admin user exists
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const adminExists = users.some((user: any) => user.email === 'admin@user.com');
+    if (!adminExists) {
+      users.push({
+        username: 'admin',
+        email: 'admin@user.com',
+        password: 'VeryStrongPassword678',
+        role: 'admin'
+      });
+      localStorage.setItem('users', JSON.stringify(users));
+    }
   }, []);
 
   const handleLogin = (user: User) => {

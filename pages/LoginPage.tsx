@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from '../types';
+import { EyeIcon, EyeOffIcon } from '../components/IconComponents';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -7,28 +8,29 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToRegister }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Hardcoded admin credentials check
-    if (username === 'adminuser' && password === 'VeryStrongPassword678') {
-      onLogin({ username: 'adminuser', role: 'admin' });
+    if (email === 'admin@user.com' && password === 'VeryStrongPassword678') {
+      onLogin({ username: 'admin', email: 'admin@user.com', role: 'admin' });
       return;
     }
 
     // Check against registered users in local storage (mock)
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find((user: User) => user.username === username && user.password === password);
+    const foundUser = users.find((user: any) => user.email === email && user.password === password);
     
     if (foundUser) {
-       onLogin({ username: foundUser.username, role: 'user' });
+       onLogin({ username: foundUser.username, email: foundUser.email, role: 'user' });
     } else {
-      setError('Invalid username or password.');
+      setError('Invalid email or password.');
     }
   };
 
@@ -39,26 +41,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchToRegister }) =>
         {error && <p className="bg-red-500/20 text-red-400 text-center p-3 rounded-lg mb-4">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-slate-400 mb-2">Username</label>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-400 mb-2">Email</label>
             <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
             />
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-2">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"

@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
+import { EyeIcon, EyeOffIcon } from '../components/IconComponents';
 
 interface RegisterPageProps {
-  onRegister: (user: { username: string; password: string }) => void;
+  onRegister: (user: { username: string; email: string; password: string }) => void;
   onSwitchToLogin: () => void;
 }
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onSwitchToLogin }) => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,12 +31,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onSwitchToLogin
 
     // Check if user already exists
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.some((user: { username: string }) => user.username === username)) {
-        setError("Username is already taken.");
+    if (users.some((user: { username: string; email: string }) => user.username === username || user.email === email)) {
+        setError("Username or email is already taken.");
         return;
     }
     
-    onRegister({ username, password });
+    onRegister({ username, email, password });
   };
 
   return (
@@ -53,26 +57,55 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onSwitchToLogin
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-2">Password</label>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-400 mb-2">Email</label>
             <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
             />
           </div>
           <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-2">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+          </div>
+          <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-400 mb-2">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full bg-base-300 border border-base-300 text-white rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+              >
+                {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"

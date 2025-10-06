@@ -1,12 +1,18 @@
+# Use official Node.js 18 Alpine image
 FROM node:18-alpine
 
-WORKDIR /app
+# Create app directory
+WORKDIR /usr/src/app
 
+# Install app dependencies
 COPY package.json package-lock.json ./
 RUN npm install
 
+# Bundle app source
 COPY . .
 
+# Expose port
 EXPOSE 4000
 
-CMD ["npm", "start"]
+# Start the server
+CMD ["node", "server.js"]

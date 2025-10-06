@@ -19,19 +19,19 @@ spec:
             - containerPort: 4000
           env:
             - name: POSTGRES_URI
-              value: postgresql://user:password@postgres:5432/skillverse
+              value: postgresql://skillverse_user:skillverse_pass@postgres:5432/skillverse_db
             - name: MONGO_URI
               value: mongodb://mongo:27017/skillverse
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: skillverse-backend
+  name: skillverse-backend-service
 spec:
-  type: ClusterIP
   selector:
     app: skillverse-backend
   ports:
     - protocol: TCP
       port: 4000
       targetPort: 4000
+  type: ClusterIP
