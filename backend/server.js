@@ -73,6 +73,7 @@ const skillSchema = new mongoose.Schema({
     description: String,
     category: String,
     userId: String,
+    ownerId: String
 });
 
 const Skill = mongoose.model('Skill', skillSchema);

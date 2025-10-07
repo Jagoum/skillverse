@@ -1,34 +1,67 @@
 version: "3.8"
 
 services:
+  # Frontend Service
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:80"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8080
+      - VITE_KEYCLOAK_URL=http://localhost:8090
+      - VITE_KEYCLOAK_REALM=skillverse
+      - VITE_KEYCLOAK_CLIENT_ID=skillverse-frontend
     depends_on:
       - backend
     networks:
       - skillverse-network
 
+  # Backend API Service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "4000:4000"
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     environment:
-      - POSTGRES_URI=postgresql://skillverse_user:skillverse_pass@postgres:5432/skillverse_db
-      - MONGO_URI=mongodb://mongo:27017/skillverse
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://skillverse_user:skillverse_pass@postgres:5432/skillverse_db
+      - MONGODB_URI=mongodb://mongodb:27017/skillverse
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=skillverse
     depends_on:
-      - postgres
-      - mongo
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
     networks:
       - skillverse-network
 
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_DB=skillverse_db
       - POSTGRES_USER=skillverse_user
@@ -36,25 +69,114 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
     networks:
       - skillverse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillverse_user -d skillverse_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  mongo:
-    image: mongo:7-jammy
+  # MongoDB Database
+  mongodb:
+    image: mongo:6
+    ports:
+      - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=skillverse
     volumes:
-      - mongo_data:/data/db
+      - mongodb_data:/data/db
+    networks:
+      - skillverse-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio
     ports:
-      - "27017:27017"
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - skillverse-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - skillverse-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak Authentication
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    ports:
+      - "8090:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=skillverse_user
+      - KC_DB_PASSWORD=skillverse_pass
+    command:
+      - start-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - skillverse-network
+
+  # Video Transcoder Service
+  transcoder:
+    build:
+      context: ./transcoder
+      dockerfile: Dockerfile
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       - skillverse-network
 
 volumes:
   postgres_data:
-  mongo_data:
+  mongodb_data:
+  minio_data:
+  rabbitmq_data:
 
 networks:
   skillverse-network:
